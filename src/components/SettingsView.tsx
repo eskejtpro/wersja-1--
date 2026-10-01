@@ -38,6 +38,8 @@ import { AgentSettingsPanel } from './AgentSettingsPanel';
 import { LayoutCustomizerSettings } from './LayoutCustomizerSettings';
 import { AppIntegrityDiagnosticRunner } from './AppIntegrityDiagnosticRunner';
 import { AppUpdateServerPanel } from './AppUpdateServerPanel';
+import { AppKnowledgeGuide } from './AppKnowledgeGuide';
+import { BookOpen } from 'lucide-react';
 
 interface SettingsViewProps {
   data: GymData;
@@ -68,7 +70,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateSyncConfig,
   onNavigateToProfile
 }) => {
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'all' | 'update' | 'layout' | 'agent' | 'tests' | 'general' | 'backup'>('all');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'all' | 'guide' | 'update' | 'layout' | 'agent' | 'tests' | 'general' | 'backup'>('all');
   const [copied, setCopied] = useState(false);
   const [importError, setImportError] = useState('');
 
@@ -139,7 +141,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-4 sm:p-6 space-y-6" id="view-settings">
+    <div className="w-full flex-1 p-3 sm:p-6 space-y-6" id="view-settings">
       {/* Header */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -156,6 +158,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex items-center gap-1.5 flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800">
           {[
             { id: 'all', label: 'Wszystko' },
+            { id: 'guide', label: '📖 Poradnik & Wzory' },
             { id: 'update', label: 'Aktualizacja (Serwer)' },
             { id: 'layout', label: 'Układ & Czcionki & Windows' },
             { id: 'agent', label: 'Agent & Persony' },
@@ -178,6 +181,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* 📖 0. KOMPLETNY PRZEWODNIK, PORADNIK & DOKUMENTACJA MATEMATYCZNA */}
+      {(activeSettingsTab === 'all' || activeSettingsTab === 'guide') && (
+        <div className="space-y-4">
+          <AppKnowledgeGuide isDark={true} />
+        </div>
+      )}
 
       {/* 🌟 1. UKŁAD, CZCIONKI & ROZMIAR EKRANU POD WINDOWS */}
       {(activeSettingsTab === 'all' || activeSettingsTab === 'layout') && (

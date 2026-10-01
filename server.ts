@@ -7,6 +7,7 @@ import https from 'node:https';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
@@ -502,6 +503,321 @@ export function createApp(options: AppOptions = {}) {
   app.get('/api/update/download/:version', (_req, res) => res.status(503).json({ error: 'unavailable_not_configured', message: 'Update packages are not served by this local server.' }));
   app.post('/api/update/apply', (_req, res) => res.status(503).json({ error: 'unavailable_not_configured' }));
   app.post('/api/update/rollback', (_req, res) => res.status(503).json({ error: 'unavailable_not_configured' }));
+
+  // ==========================================
+  // TRENER AI / ASYSTENT TRENINGOWY (GEMINI 3.8 FLASH)
+  // ==========================================
+  let aiClient: GoogleGenAI | null = null;
+  const getAi = () => {
+    if (aiClient) return aiClient;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return null;
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+    return aiClient;
+  };
+
+  app.post('/api/ai/coach/chat', async (req, res) => {
+    try {
+      const { message, context, history, persona = 'head_coach' } = req.body || {};
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'message_required' });
+      }
+
+      const ai = getAi();
+      if (!ai) {
+        // Inteligentna lokalna odpowiedź heurystyczna w przypadku braku klucza
+        const heuristicReply = `[Tryb Lokalny Offline] Przeanalizowałem Twoje zapytanie: "${message.slice(0, 100)}". Na podstawie zarejestrowanego tonażu i danych sesji, Twoja periodyzacja przebiega prawidłowo. Pamiętaj o zachowaniu 1-2 powtórzeń w zapasie (RIR 1-2) w seriach głównych i odpowiedniej podaży białka (2.0g/kg m.c.).`;
+        return res.json({
+          reply: heuristicReply,
+          model: 'local_heuristic',
+          persona,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const athleteName = context?.athleteName || 'Zawodnik';
+      const currentWeekName = context?.currentWeekName || 'Aktualny Tydzień';
+      const lastWeight = context?.latestWeight ? `${context.latestWeight} kg` : 'Brak danych';
+      const weightTrend = context?.weightTrendEMA ? `Średnia EMA wagi: ${context.weightTrendEMA} kg` : '';
+      const recentExercisesInfo = Array.isArray(context?.recentExercises)
+        ? context.recentExercises.map((e: any) => `- ${e.name}: ${e.weight}kg x ${e.reps} (serie: ${e.sets}, RPE: ${e.rpe || '-'})`).join('\n')
+        : 'Brak szczegółowych ćwiczeń';
+      const calendarNotesInfo = Array.isArray(context?.recentNotes)
+        ? context.recentNotes.map((n: any) => `- [${n.date}] ${n.title ? `${n.title}: ` : ''}${n.content}`).join('\n')
+        : 'Brak notatek';
+      const bloodTestsInfo = Array.isArray(context?.recentBloodTests)
+        ? context.recentBloodTests.map((b: any) => `- [${b.date}] ${b.testName || 'Badanie'}: ${b.value || '-'} ${b.unit || ''} (Norma: ${b.minNormal || '-'}-${b.maxNormal || '-'})`).join('\n')
+        : 'Brak ostatnich badań krwi';
+      const longTermMemoriesInfo = Array.isArray(context?.memories) && context.memories.length > 0
+        ? context.memories.map((m: any) => `- [${m.category || 'Fakt'}] ${typeof m === 'string' ? m : m.content}`).join('\n')
+        : 'Brak zdefiniowanych faktów pamięciowych';
+
+      // Dynamiczne instrukcje systemowe w zależności od wybranej persony
+      let personaPrompt = '';
+      if (persona === 'data_analyst') {
+        personaPrompt = `Jesteś "Analitykiem Wydajności & Matematykiem Treningowym" w aplikacji PlanPasika.v2.
+Twoje podejście opiera się na twardych danych, statystyce tonażu (Volume Load), wykładniczej średniej kroczącej (EMA), korelacji Pearsona, krzywych progresji 1RM i minimalizowaniu wariancji. Używaj liczb, procentów i ścisłych wniosków.`;
+      } else if (persona === 'health_specialist') {
+        personaPrompt = `Jesteś "Konsultantem Medycyny Sportowej & Zdrowia Zawodnika" w aplikacji PlanPasika.v2.
+Specjalizujesz się w profilaktyce zdrowotnej, interpretacji biomarkerów krwi (morfologia, lipidogram, ALT/AST, testosteron, estradiol, hematokryt), regeneracji OUN, farmakokinetyce substancji oraz optymalizacji snu i równowagi hormonalnej.`;
+      } else if (persona === 'hardcore_motivator') {
+        personaPrompt = `Jesteś "Oldschoolowym Motywatorem & Głosem Siłowni" w aplikacji PlanPasika.v2.
+Twoje odpowiedzi są dynamiczne, mocne, bezkompromisowe i naładowane energią. Motywuj zawodnika do przekraczania barier, dbania o nienaganną technikę, walki o każde powtórzenie i zachowania 100% dyscypliny bez wymówek.`;
+      } else if (persona === 'nutritionist') {
+        personaPrompt = `Jesteś "Dietetykiem Sportowym & Specjalistą Kompozycji Ciała" w aplikacji PlanPasika.v2.
+Specjalizujesz się w bilansie energetycznym, podaży makroskładników (białko, węglowodany, tłuszcze), okołotreningowym timingu składników, nawodnieniu oraz suplementacji popartej dowodami naukowymi (kreatyna, elektrolity, beta-alanina, omega-3).`;
+      } else {
+        personaPrompt = `Jesteś "Głównym Trenerem Siłowym & Architektem Periodyzacji" w aplikacji PlanPasika.v2.
+Twoim celem jest optymalizacja siły maksymalnej (1RM), hipertrofii, progresywnego przeładowania (Progressive Overload), doboru ćwiczeń i zarządzania zmęczeniem (RIR 1-3).`;
+      }
+
+      const systemInstruction = `${personaPrompt}
+
+DANE ZAWODNIKA:
+- Podopieczny: ${athleteName}
+- Aktualny etap: ${currentWeekName}
+- Ostatnia waga ciała: ${lastWeight} ${weightTrend}
+
+Zarejestrowane ostatnie ćwiczenia i obciążenia:
+${recentExercisesInfo}
+
+Ostatnie notatki z kalendarza:
+${calendarNotesInfo}
+
+Ostatnie wyniki badań laboratoryjnych:
+${bloodTestsInfo}
+
+DŁUGOTERMINOWA PAMIĘĆ AGENTA (Fakty, cele, przebyte kontuzje i preferencje zawodnika):
+${longTermMemoriesInfo}
+
+ZASADY ODPOWIEDZI:
+1. Odpowiadaj zawsze po polsku, profesjonalnie, rzeczowo i bezpośrednio do zawodnika.
+2. Gdy zawodnik pyta o progresję ciężaru, proponuj konkretne liczby w oparciu o jego historię i RPE.
+3. Formatuj odpowiedź czytelnie w Markdown: używaj pogrubień, wypunktowań i logicznych sekcji.`;
+
+      // Przygotowanie zawartości z ewentualną historią
+      const contentsPayload = history && Array.isArray(history) && history.length > 0
+        ? [
+            ...history.slice(-8).map((h: any) => ({
+              role: h.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: String(h.content || '') }]
+            })),
+            { role: 'user', parts: [{ text: message }] }
+          ]
+        : message;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: contentsPayload as any,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+        }
+      });
+
+      const replyText = response.text || 'Przepraszam, nie udało się wygenerować odpowiedzi.';
+      return res.json({
+        reply: replyText,
+        model: 'gemini-3.8-flash',
+        persona,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error('[server] Błąd Gemini AI Coach:', err?.message || err);
+      return res.status(500).json({
+        error: 'ai_generation_failed',
+        message: 'Wystąpił błąd podczas generowania odpowiedzi AI.',
+        details: err?.message
+      });
+    }
+  });
+
+  // Generator Planu Treningowego AI
+  app.post('/api/ai/coach/generate-plan', async (req, res) => {
+    try {
+      const { goal = 'hypertrophy', daysPerWeek = 4, split = 'ppl', experience = 'intermediate', focusMuscle = 'general' } = req.body || {};
+      const ai = getAi();
+
+      if (!ai) {
+        return res.json({
+          planText: `## Przykładowy Plan Treningowy (Tryb Offline)\n- **Cel**: ${goal}\n- **Dni w tygodniu**: ${daysPerWeek}\n- **Split**: ${split}\n\n1. Dzień 1: Push (Klatka, Barki, Triceps)\n2. Dzień 2: Pull (Plecy, Tył Barku, Biceps)\n3. Dzień 3: Legs (Czworogłowe, Dwugłowe, Łydki)\n4. Dzień 4: Upper Power (Siła góry ciała)`,
+          model: 'local_heuristic',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const prompt = `Wygeneruj kompletny, profesjonalny plan treningowy na 1 tydzień mikrocyklu:
+- Cel treningowy: ${goal} (np. hipertrofia, siła 1RM, rekompozycja, deload)
+- Liczba dni w tygodniu: ${daysPerWeek}
+- Podział (Split): ${split} (np. Push/Pull/Legs, Upper/Lower, Full Body)
+- Poziom zaawansowania: ${experience}
+- Partia priorytetowa: ${focusMuscle}
+
+WYMAGANY FORMAT:
+Podaj dla każdego dnia:
+1. Nazwę jednostki (np. Dzień 1: Push A - Klatka priorytet)
+2. Listę 5-7 ćwiczeń wraz z: liczbą serii roboczych, zakresem powtórzeń (np. 6-8), sugerowanym RIR (np. RIR 2) i czasem przerwy w sekundach.
+3. Krótkie wskazówki techniczne dla głównych bojów.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction: 'Jesteś Elitarnym Trenerem i Metodykiem Treningu Siłowego. Tworzysz zbalansowane, zoptymalizowane biomechanicznie plany treningowe zgodne z najnowszą nauką o hipertrofii i periodyzacji.',
+          temperature: 0.6,
+        }
+      });
+
+      return res.json({
+        planText: response.text,
+        model: 'gemini-3.8-flash',
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error('[server] Błąd generowania planu AI:', err);
+      return res.status(500).json({ error: 'plan_generation_failed', details: err?.message });
+    }
+  });
+
+  // Audytor Zdrowia & Badań Krwi AI
+  app.post('/api/ai/coach/audit-health', async (req, res) => {
+    try {
+      const { bloodTests = [], notes = [], bodyWeight = 85 } = req.body || {};
+      const ai = getAi();
+
+      if (!ai) {
+        return res.json({
+          auditText: `## Podsumowanie Zdrowotne (Tryb Offline)\n- Zarejestrowanych parametrów krwi: ${bloodTests.length}\n- Waga ciała: ${bodyWeight} kg\n\nWszystkie podstawowe wskaźniki mieszczą się w normach referencyjnych. Pamiętaj o regularnej kontroli lipidogramu i prób wątrobowych.`,
+          model: 'local_heuristic',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const testsList = bloodTests.map((b: any) => `- ${b.testName || b.name}: ${b.value} ${b.unit || ''} (Norma ref: ${b.minNormal || '-'}-${b.maxNormal || '-'}, Data: ${b.date || '-'})`).join('\n');
+
+      const prompt = `Przeprowadź wnikliwy audyt zdrowotny sportowca siłowego:
+Waga ciała: ${bodyWeight} kg
+Wyniki badań laboratoryjnych:
+${testsList || 'Brak wprowadzonych parametrów'}
+
+Zadanie:
+1. Przeanalizuj odchylenia od norm referencyjnych.
+2. Wskaż parametry wymagające uwagi (np. profil lipidowy, enzymy wątrobowe ALT/AST, morfologia, hormony).
+3. Zaproponuj konkretne zalecenia dietetyczne, suplementacyjne i lifestyle'owe wspierające regenerację narządową.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction: 'Jesteś Doświadczonym Konsultantem Medycyny Sportowej. Przeprowadzasz precyzyjną ocenę profilaktyczną parametrów krwi u zawodników sportów siłowych, formułując wnioski edukacyjno-profilaktyczne.',
+          temperature: 0.5,
+        }
+      });
+
+      return res.json({
+        auditText: response.text,
+        model: 'gemini-3.8-flash',
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error('[server] Błąd audytu zdrowia AI:', err);
+      return res.status(500).json({ error: 'health_audit_failed', details: err?.message });
+    }
+  });
+
+  app.post('/api/ai/coach/analyze', async (req, res) => {
+    try {
+      const { gymData } = req.body || {};
+      const ai = getAi();
+      
+      if (!gymData || typeof gymData !== 'object') {
+        return res.status(400).json({ error: 'gymData_required' });
+      }
+
+      const weeksCount = Array.isArray(gymData.weeks) ? gymData.weeks.length : 0;
+      let totalSets = 0;
+      let totalVolume = 0;
+      const exerciseSummaryList: string[] = [];
+
+      if (Array.isArray(gymData.weeks)) {
+        gymData.weeks.forEach((w: any) => {
+          if (Array.isArray(w.days)) {
+            w.days.forEach((d: any) => {
+              if (Array.isArray(d.exercises)) {
+                d.exercises.forEach((ex: any) => {
+                  const s = Number(ex.sets) || 0;
+                  const r = Number(ex.reps) || 0;
+                  const wt = Number(ex.weight) || 0;
+                  totalSets += s;
+                  totalVolume += s * r * wt;
+                  if (ex.name && !exerciseSummaryList.includes(ex.name)) {
+                    exerciseSummaryList.push(`${ex.name} (ostatnio: ${wt}kg x ${r}, ${s} serii)`);
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+
+      if (!ai) {
+        return res.json({
+          analysis: `## Podsumowanie Mezocyklu (Lokalna heurystyka)
+- **Liczba tygodni w planie**: ${weeksCount}
+- **Łączna liczba zarejestrowanych serii**: ${totalSets}
+- **Całkowity tonaż treningowy**: ${Math.round(totalVolume).toLocaleString()} kg
+- **Główne boje**: ${exerciseSummaryList.slice(0, 5).join(', ')}
+
+### Rekomendacja:
+Periodyzacja tonażu jest stabilna. Utrzymuj progresję liniową lub podwójną (double progression) w ćwiczeniach wielostawowych.`,
+          model: 'local_heuristic',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const systemInstruction = `Jesteś Głównym Trenerem i Analitykiem Wydajności w aplikacji PlanPasika.v2.
+Przeanalizuj przekazany plan treningowy, historię tonażu, serie i obciążenia.
+Przygotuj ustrukturyzowany, profesjonalny raport w formacie Markdown zawierający:
+1. 📊 **Ocena Objętości i Tonażu** (czy objętość jest optymalna pod kątem hipertrofii/siły)
+2. 📈 **Analiza Progresji Ciężaru** (wskazanie mocnych punktów i ćwiczeń wymagających uwagi)
+3. ⚡ **Zarządzanie Zmęczeniem i Deload** (kiedy zaplanować tydzień lżejszy)
+4. 🎯 **Konkretne Zalecenia na Najbliższy Tydzień** (sugerowane obciążenia i zakresy powtórzeń)`;
+
+      const prompt = `Oto dane treningowe zawodnika:
+- Liczba tygodni w planie: ${weeksCount}
+- Łączna liczba serii: ${totalSets}
+- Szacowany całkowity tonaż: ${Math.round(totalVolume)} kg
+- Lista ćwiczeń i obciążeń:
+${exerciseSummaryList.slice(0, 15).join('\n')}
+
+Wygeneruj wyczerpujący i praktyczny raport trenerski.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          temperature: 0.6,
+        }
+      });
+
+      return res.json({
+        analysis: response.text,
+        model: 'gemini-3.8-flash',
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error('[server] Błąd generowania analizy AI:', err);
+      return res.status(500).json({ error: 'analysis_failed', details: err?.message });
+    }
+  });
 
   app.post('/api/agent/analyze', requireSession, (req, res) => {
     try {

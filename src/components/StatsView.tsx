@@ -222,7 +222,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-4 sm:p-6 space-y-6" id="view-stats">
+    <div className="w-full flex-1 p-3 sm:p-6 space-y-6" id="view-stats">
       {/* Top Tab Bar: Raport Mezocyklu vs Wykresy Ćwiczeń */}
       <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
         <button

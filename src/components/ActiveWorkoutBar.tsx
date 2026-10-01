@@ -72,7 +72,7 @@ export const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       onStartRestTimer(secs);
     } else if (onUpdateRestTimer) {
       onUpdateRestTimer(secs);
-      soundService.triggerHaptic([50]);
+      soundService.triggerHaptic('light');
     }
   };
 

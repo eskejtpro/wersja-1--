@@ -98,7 +98,7 @@ export const BodyWeightView: React.FC<BodyWeightViewProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-3 sm:p-4 space-y-3.5" id="view-body-weight">
+    <div className="w-full max-w-full p-3 sm:p-4 space-y-3.5" id="view-body-weight">
       {/* 1. Header & Subcategories Bar (Zmniejszony wygląd i wyrównane czcionki) */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xs space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">

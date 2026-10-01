@@ -121,7 +121,7 @@ export interface AppSettings {
   confirmBeforeDelete?: boolean;
   /** Hover annotation preview system for all UI elements and functions */
   showHoverAnnotations?: boolean;
-  startupView?: 'plan' | 'stats' | 'muscle' | 'weight' | 'cycles' | 'exercises' | 'settings' | 'python' | 'profile';
+  startupView?: 'quick_access' | 'plan' | 'stats' | 'muscle' | 'weight' | 'cycles' | 'exercises' | 'settings' | 'python' | 'profile';
   rememberLastView?: boolean;
   reducedMotion?: boolean;
   analysisShowExecutionSummary?: boolean;
@@ -197,6 +197,63 @@ export interface AppSettings {
   updateServerUrl?: string;
   lastUpdateCheckAt?: string;
   installedAppVersion?: string;
+
+  /** Android & Universal Personalization */
+  accentColor?: 'emerald' | 'cyan' | 'gold' | 'crimson' | 'purple' | 'blue' | 'amber' | 'cyberpunk';
+  themeVariant?: 'emerald' | 'cyan' | 'gold' | 'crimson' | 'purple' | 'blue' | 'amber' | 'cyberpunk';
+  amoledBlack?: boolean;
+  highContrastBorders?: boolean;
+  cardGlowEffect?: boolean;
+  glassmorphism?: boolean;
+  activeCardAnimation?: 'none' | 'subtle' | 'smooth' | 'glow';
+  windowHeaderStyle?: 'minimal' | 'full_bar' | 'compact_pills';
+  gymDigits?: boolean;
+  cardBorderRadius?: 'sharp' | 'rounded' | 'extra_rounded' | 'pill';
+  cardDensity?: 'compact' | 'standard' | 'ultra_dense' | 'spacious';
+  handedness?: 'right' | 'left';
+  screenWakeLock?: boolean;
+  autoFocusNextSet?: boolean;
+  quickWeightIncrements?: number[];
+  timerAutoStart?: boolean;
+  timerWarning10s?: boolean;
+  timerSoundType?: 'bell' | 'beep' | 'silent';
+  hapticIntensity?: 'off' | 'light' | 'medium' | 'strong';
+  restTimeCompound?: number;
+  restTimeAccessory?: number;
+  restTimeIsolation?: number;
+  oneRmFormula?: 'brzycki' | 'epley' | 'lombardi' | 'wathan';
+  weightRoundingStep?: 0 | 0.5 | 1.25 | 2.5;
+  emaAlpha?: 0.2 | 0.3 | 0.5;
+  bottomNavHeight?: 'compact' | 'standard' | 'large';
+  bottomNavLabels?: 'all' | 'active_only' | 'icons_only';
+  bottomNavStyle?: 'classic_bar' | 'floating_dock' | 'minimal_capsule';
+  bottomNavOrder?: string[];
+  bottomNavVisibleTabs?: string[];
+  floatingActionButton?: 'timer' | 'ai' | 'weight' | 'none';
+  quickAccessWidgets?: QuickAccessWidgetConfig[];
+  quickAccessLayout?: 'bento_grid' | 'compact_stack' | 'two_column';
+}
+
+export type QuickAccessWidgetId = 
+  | 'active_workout'
+  | 'timer_quick'
+  | 'weight_trend'
+  | 'ai_coach_mini'
+  | 'pharmacokinetics_summary'
+  | 'blood_test_alerts'
+  | 'muscle_volume_radar'
+  | 'quick_notes'
+  | 'pr_tracker'
+  | 'plate_calc_widget'
+  | 'water_hydration';
+
+export interface QuickAccessWidgetConfig {
+  id: string;
+  widgetType: QuickAccessWidgetId;
+  title: string;
+  enabled: boolean;
+  order: number;
+  size: 'full' | 'half' | 'compact';
 }
 
 export interface AppUpdateInfo {
@@ -235,6 +292,17 @@ export interface AppUpdateState {
   history?: AppUpdateHistoryEntry[];
 }
 
+export interface CalendarDayNote {
+  id: string;
+  date: string;
+  title?: string;
+  content: string;
+  category?: 'general' | 'bloodwork' | 'supplement' | 'recovery' | 'goal' | 'warning' | 'training';
+  color?: 'emerald' | 'cyan' | 'purple' | 'amber' | 'rose' | 'yellow' | 'blue' | 'slate';
+  isImportant?: boolean;
+  createdAt?: string;
+}
+
 export interface ProtocolEntry {
   id: string;
   date: string;
@@ -244,6 +312,9 @@ export interface ProtocolEntry {
   unit: 'mg' | 'IU' | 'mcg' | 'ml' | 'tab';
   route: 'IM' | 'SC' | 'Oral';
   notes?: string;
+  color?: 'emerald' | 'cyan' | 'purple' | 'amber' | 'rose' | 'yellow' | 'blue' | 'slate';
+  tag?: string;
+  completed?: boolean;
 }
 
 export interface AthletePersonalRecord {
@@ -333,6 +404,22 @@ export interface CatalogExercise {
   isCustom?: boolean;
 }
 
+export interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  model?: string;
+  persona?: string;
+}
+
+export interface AiAgentMemory {
+  id: string;
+  content: string;
+  createdAt: string;
+  category?: 'goal' | 'injury' | 'preference' | 'record' | 'general';
+}
+
 export interface GymData {
   settings: AppSettings;
   weeks: TrainingWeek[];
@@ -341,6 +428,10 @@ export interface GymData {
   circumferences?: CircumferenceEntry[];
   bodyPartMeasurements?: BodyPartMeasurement[];
   protocolEntries?: ProtocolEntry[];
+  calendarNotes?: CalendarDayNote[];
+  bloodTests?: any[];
+  aiChatHistory?: AiChatMessage[];
+  aiAgentMemories?: AiAgentMemory[];
   profile?: UserProfile;
   profilesList?: UserProfile[];
   syncConfig?: SyncServerConfig;

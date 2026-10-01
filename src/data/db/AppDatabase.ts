@@ -13,6 +13,7 @@ import {
   AppSettings,
   GymData,
   ProtocolEntry,
+  CalendarDayNote,
   UserProfile,
   SyncServerConfig,
   SyncLogEntry
@@ -37,6 +38,7 @@ export interface DatabaseState {
   bodyPartMeasurements: BodyPartMeasurement[];
   catalogExercises: CatalogExercise[];
   protocols: ProtocolEntry[];
+  calendarNotes: CalendarDayNote[];
   profile?: UserProfile;
   profilesList: UserProfile[];
   syncConfig?: SyncServerConfig;
@@ -72,6 +74,7 @@ class AppDatabase {
       bodyPartMeasurements: [],
       catalogExercises: DEFAULT_CATALOG_EXERCISES,
       protocols: initialGymData.protocolEntries || [],
+      calendarNotes: initialGymData.calendarNotes || [],
       profile: initialGymData.profile,
       profilesList: initialGymData.profilesList || [],
       syncConfig: initialGymData.syncConfig,
@@ -160,6 +163,7 @@ class AppDatabase {
         ? sourceData.catalogExercises
         : DEFAULT_CATALOG_EXERCISES,
       protocols: Array.isArray(sourceData.protocolEntries) ? sourceData.protocolEntries : (initialGymData.protocolEntries || []),
+      calendarNotes: Array.isArray(sourceData.calendarNotes) ? sourceData.calendarNotes : (initialGymData.calendarNotes || []),
       profile: sourceData.profile || initialGymData.profile,
       profilesList: Array.isArray(sourceData.profilesList) && sourceData.profilesList.length > 0
         ? sourceData.profilesList
@@ -399,6 +403,7 @@ class AppDatabase {
       bodyPartMeasurements: this.state.bodyPartMeasurements,
       catalogExercises: this.state.catalogExercises,
       protocolEntries: this.state.protocols,
+      calendarNotes: this.state.calendarNotes,
       profile: this.state.profile,
       profilesList: this.state.profilesList,
       syncConfig: this.state.syncConfig,

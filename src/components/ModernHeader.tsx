@@ -47,6 +47,10 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
   const isDark = settings.theme === 'dark';
 
   const viewTitles: Record<string, { title: string; subtitle: string }> = {
+    quick_access: {
+      title: 'Pulpit Szybkiego Dostępu',
+      subtitle: 'Modułowy panel kontrolny, stoper, nawodnienie i szybki asystent'
+    },
     plan: {
       title: 'Plan Treningowy & Rejestr Serii',
       subtitle: `${currentWeekName || 'Tydzień 1'} • ${currentDayName || 'Bieżący Trening'}`
@@ -75,6 +79,10 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
       title: 'Katalog & Baza Wzorcowa Ćwiczeń',
       subtitle: 'Słownik szablonów ćwiczeń – baza referencyjna w 100% odizolowana od analiz i wykresów progresu'
     },
+    ai: {
+      title: 'Trener AI & Periodyzacja',
+      subtitle: 'Inteligentna analiza planu, progresji ciężaru i periodyzacji z modelem Gemini'
+    },
     settings: {
       title: 'Ustawienia & Auto-Backup JSON',
       subtitle: 'Kopie bezpieczeństwa, eksport i konfiguracja profilu'
@@ -95,8 +103,23 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
       }`}
       id="modern-app-header"
     >
-      {/* Left: Title & Subtitle */}
-      <div className="flex items-center gap-3">
+      {/* Left: Mobile Menu Toggle & Title */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Mobile Menu Toggle (Left Side) */}
+        <button
+          type="button"
+          onClick={onToggleMobileMenu}
+          className={`p-2 rounded-xl border md:hidden transition-all shrink-0 cursor-pointer ${
+            isDark 
+              ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white active:scale-95' 
+              : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900 active:scale-95'
+          }`}
+          title="Otwórz menu nawigacji"
+          id="btn-mobile-menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
         <div>
           <h1 className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2">
             <span>{currentViewMeta.title}</span>
@@ -107,7 +130,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
               className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${isDark ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20' : 'text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100'}`}
               title="Wersja aplikacji - kliknij, aby sprawdzić aktualizacje"
             >
-              v{settings.installedAppVersion || '2.24.0'}
+              v{settings.installedAppVersion || '3.0.0'}
             </button>
           </h1>
           <p className={`text-xs font-medium truncate max-w-md ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -247,21 +270,6 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
             <span className="hidden xl:inline">Eksport JSON</span>
           </button>
         )}
-
-        {/* Mobile Menu Toggle (Right Side) */}
-        <button
-          type="button"
-          onClick={onToggleMobileMenu}
-          className={`p-2 rounded-xl border md:hidden transition-colors ${
-            isDark 
-              ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white' 
-              : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900'
-          }`}
-          title="Otwórz menu nawigacji"
-          id="btn-mobile-menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
       </div>
     </header>
   );

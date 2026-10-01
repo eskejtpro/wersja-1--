@@ -208,7 +208,7 @@ export function useWorkoutTimer(): WorkoutTimerState {
     setRestTargetMs(target);
     setRestTimerSeconds(seconds);
     hasNotifiedRestFinishedRef.current = false;
-    soundService.triggerHaptic([50]);
+    soundService.triggerHaptic('light');
 
     try {
       localStorage.setItem(STORAGE_REST_TARGET, String(target));

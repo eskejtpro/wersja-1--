@@ -16,6 +16,7 @@ import {
   GymData,
   AppSettings,
   ProtocolEntry,
+  CalendarDayNote,
   UserProfile,
   SyncServerConfig,
   SyncLogEntry
@@ -94,6 +95,7 @@ export class RoomDatabase {
     const weeks = denormalizeRelationalToWeeks(relational);
     const settings = this.storageDriver.readTable<AppSettings>('settings', initialGymData.settings);
     const protocols = this.storageDriver.readTable<ProtocolEntry[]>('protocols', []);
+    const calendarNotes = this.storageDriver.readTable<CalendarDayNote[]>('calendar_notes' as any, initialGymData.calendarNotes || []);
     const profile = this.storageDriver.readTable<UserProfile>('profiles', initialGymData.profile);
     const profilesList = this.storageDriver.readTable<UserProfile[]>('profiles' as any, initialGymData.profilesList || []);
     const syncConfig = this.storageDriver.readTable<SyncServerConfig>('settings' as any, initialGymData.syncConfig);
@@ -113,6 +115,7 @@ export class RoomDatabase {
       bodyPartMeasurements,
       catalogExercises,
       protocolEntries: protocols,
+      calendarNotes,
       profile,
       profilesList,
       syncConfig,
@@ -158,6 +161,9 @@ export class RoomDatabase {
           }
           if (gymData.protocolEntries) {
             this.storageDriver.writeTable('protocols', gymData.protocolEntries);
+          }
+          if (gymData.calendarNotes) {
+            this.storageDriver.writeTable('calendar_notes' as any, gymData.calendarNotes);
           }
           if (gymData.profile) {
             this.storageDriver.writeTable('profiles', gymData.profile);

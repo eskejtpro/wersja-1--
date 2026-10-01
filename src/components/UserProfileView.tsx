@@ -280,7 +280,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-4 sm:p-6 space-y-6" id="view-profile">
+    <div className="w-full flex-1 p-3 sm:p-6 space-y-6" id="view-profile">
       {/* Top Header Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />

@@ -23,6 +23,7 @@ import {
   Layers,
   Edit2,
   Wifi,
+  Bot,
   WifiOff,
   UserCheck,
   Flame,
@@ -195,6 +196,15 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
 
   const allAvailableNavItems = [
     {
+      id: 'quick_access',
+      label: 'Szybki Dostęp',
+      icon: Zap,
+      badge: 'Pulpit',
+      badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      description: 'Główny pulpit modułowy i szybkie funkcje',
+      category: 'core'
+    },
+    {
       id: 'plan',
       label: 'Plan Treningowy',
       badge: `${weeksCount} tyg.`,
@@ -240,6 +250,15 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
       badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
       description: 'Zarządzanie, dodawanie i edycja ćwiczeń',
       category: 'system'
+    },
+    {
+      id: 'ai',
+      label: 'Trener AI',
+      icon: Bot,
+      badge: 'Gemini',
+      badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+      description: 'Inteligentny asystent treningu, progresji i periodyzacji',
+      category: 'core'
     },
     {
       id: 'settings',

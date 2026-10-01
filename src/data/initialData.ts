@@ -1,5 +1,18 @@
-import { GymData } from '../types';
+import { GymData, QuickAccessWidgetConfig } from '../types';
 import { DEFAULT_CATALOG_EXERCISES } from './defaultCatalogExercises';
+
+export const DEFAULT_QUICK_ACCESS_WIDGETS: QuickAccessWidgetConfig[] = [
+  { id: 'w-workout', widgetType: 'active_workout', title: 'Dzisiejszy Trening', enabled: true, order: 1, size: 'full' },
+  { id: 'w-timer', widgetType: 'timer_quick', title: 'Szybki Stoper Treningowy', enabled: true, order: 2, size: 'half' },
+  { id: 'w-weight', widgetType: 'weight_trend', title: 'Masa Ciała & Filtr EMA', enabled: true, order: 3, size: 'half' },
+  { id: 'w-ai-coach', widgetType: 'ai_coach_mini', title: 'Trener AI Gemini 3.8', enabled: true, order: 4, size: 'full' },
+  { id: 'w-plates', widgetType: 'plate_calc_widget', title: 'Kalkulator Talerzy na Gryf', enabled: true, order: 5, size: 'half' },
+  { id: 'w-water', widgetType: 'water_hydration', title: 'Licznik Nawodnienia (H₂O)', enabled: true, order: 6, size: 'half' },
+  { id: 'w-radar', widgetType: 'muscle_volume_radar', title: 'Balans Objętości Tygodnia', enabled: true, order: 7, size: 'half' },
+  { id: 'w-proto', widgetType: 'pharmacokinetics_summary', title: 'Kalendarz Iniekcji & Środków', enabled: true, order: 8, size: 'half' },
+  { id: 'w-pr', widgetType: 'pr_tracker', title: 'Najnowsze Rekordy 1RM', enabled: true, order: 9, size: 'half' },
+  { id: 'w-notes', widgetType: 'quick_notes', title: 'Szybki Notatnik Treningowy', enabled: true, order: 10, size: 'full' }
+];
 
 export const initialGymData: GymData = {
   settings: {
@@ -34,7 +47,7 @@ export const initialGymData: GymData = {
     analysisTrendWindowWeeks: 4,
     confirmBeforeDelete: true,
     showHoverAnnotations: true,
-    startupView: 'plan',
+    startupView: 'quick_access',
     rememberLastView: false,
     analysisShowExecutionSummary: true,
     analysisShowWeekComparison: true,
@@ -70,6 +83,39 @@ export const initialGymData: GymData = {
     aiAgentPersona: 'balanced',
     aiAgentFocus: 'all_muscles',
     aiAgentResponseLength: 'concise',
+    accentColor: 'emerald',
+    themeVariant: 'emerald',
+    amoledBlack: false,
+    highContrastBorders: false,
+    cardGlowEffect: true,
+    glassmorphism: true,
+    activeCardAnimation: 'smooth',
+    windowHeaderStyle: 'minimal',
+    gymDigits: true,
+    cardBorderRadius: 'rounded',
+    cardDensity: 'compact',
+    handedness: 'right',
+    screenWakeLock: true,
+    autoFocusNextSet: true,
+    quickWeightIncrements: [1.25, 2.5, 5, 10],
+    timerAutoStart: true,
+    timerWarning10s: true,
+    timerSoundType: 'bell',
+    hapticIntensity: 'medium',
+    restTimeCompound: 180,
+    restTimeAccessory: 90,
+    restTimeIsolation: 60,
+    oneRmFormula: 'brzycki',
+    weightRoundingStep: 0.5,
+    emaAlpha: 0.3,
+    bottomNavHeight: 'standard',
+    bottomNavLabels: 'all',
+    bottomNavStyle: 'floating_dock',
+    bottomNavOrder: ['quick_access', 'plan', 'stats', 'muscle', 'weight', 'cycles', 'exercises', 'settings'],
+    bottomNavVisibleTabs: ['quick_access', 'plan', 'stats', 'muscle', 'weight', 'cycles', 'exercises', 'settings'],
+    floatingActionButton: 'timer',
+    quickAccessWidgets: DEFAULT_QUICK_ACCESS_WIDGETS,
+    quickAccessLayout: 'bento_grid',
     lastBackupTime: undefined
   },
   weeks: [
@@ -617,6 +663,28 @@ export const initialGymData: GymData = {
       unit: 'mg',
       route: 'IM',
       notes: 'Prawy pośladek'
+    }
+  ],
+  calendarNotes: [
+    {
+      id: 'note-1',
+      date: '2026-09-01',
+      title: 'Start nowego mezocyklu',
+      content: 'Rozpoczęcie bloku siłowego, regeneracja na wysokim poziomie.',
+      category: 'goal',
+      color: 'emerald',
+      isImportant: true,
+      createdAt: '2026-09-01T07:30:00.000Z'
+    },
+    {
+      id: 'note-2',
+      date: '2026-09-15',
+      title: 'Badania krwi rano',
+      content: 'Morfologia, lipidogram, próby wątrobowe, testosteron i estradiol na czczo.',
+      category: 'bloodwork',
+      color: 'rose',
+      isImportant: true,
+      createdAt: '2026-09-15T06:45:00.000Z'
     }
   ],
   profile: {

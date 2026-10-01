@@ -13,13 +13,15 @@ import { SettingsView } from './components/SettingsView';
 import { ExerciseManagerView } from './components/ExerciseManagerView';
 import { CycleProtocolView } from './components/CycleProtocolView';
 import { UserProfileView } from './components/UserProfileView';
+import { AiCoachView } from './components/AiCoachView';
+import { QuickAccessDashboard } from './components/QuickAccessDashboard';
 import { ExerciseModal } from './components/ExerciseModal';
 import { ExerciseHistoryModal } from './components/ExerciseHistoryModal';
 import { ActiveWorkoutBar } from './components/ActiveWorkoutBar';
 import { WorkoutSummaryModal } from './components/WorkoutSummaryModal';
 import { soundService } from './utils/soundService';
 import { useWorkoutTimer } from './utils/useWorkoutTimer';
-import { GymData, TrainingWeek, TrainingDay, Exercise, ExerciseHistoryPoint, BodyWeightEntry, CircumferenceEntry, BodyPartMeasurement, AppSettings, LoggedSet, BackupEntry, ProtocolEntry, UserProfile, SyncServerConfig, SyncLogEntry, CatalogExercise } from './types';
+import { GymData, TrainingWeek, TrainingDay, Exercise, ExerciseHistoryPoint, BodyWeightEntry, CircumferenceEntry, BodyPartMeasurement, AppSettings, LoggedSet, BackupEntry, ProtocolEntry, CalendarDayNote, UserProfile, SyncServerConfig, SyncLogEntry, CatalogExercise, AiChatMessage, AiAgentMemory } from './types';
 import { initialGymData } from './data/initialData';
 import { DEFAULT_CATALOG_EXERCISES } from './data/defaultCatalogExercises';
 import { getTodayDateString } from './utils/calculations';
@@ -256,6 +258,26 @@ export default function App() {
     };
   }, []);
 
+  // Screen WakeLock na Androidzie podczas aktywnego treningu (blokada wygaszania ekranu)
+  useEffect(() => {
+    let wakeLockSentinel: any = null;
+    const requestWakeLock = async () => {
+      if (data.settings.screenWakeLock !== false && workoutTimer.isSessionActive && typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+        try {
+          wakeLockSentinel = await (navigator as any).wakeLock.request('screen');
+        } catch {
+          // WakeLock może być niedozwolony przez politykę oszczędzania energii systemu
+        }
+      }
+    };
+    requestWakeLock();
+    return () => {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release().catch(() => {});
+      }
+    };
+  }, [data.settings.screenWakeLock, workoutTimer.isSessionActive]);
+
   // 2. Atomowy, asynchroniczny zapis do bazy Room bez blokowania wątku UI (Non-Blocking Queue)
   const pendingDataRef = useRef<GymData>(data);
   const writeTimeoutRef = useRef<number | null>(null);
@@ -440,8 +462,11 @@ export default function App() {
   const handleCreateManualBackup = () => {
     try {
       createAutoBackup(data, 'manual');
-      alert('Kopia zapasowa została pomyślnie utworzona i zapisana!');
-    } catch { alert('Błąd zapisu kopii zapasowej. Sprawdź dostęp do dysku.'); }
+      setAutoSaveStatus(`Utworzono kopię zapasową (${new Date().toLocaleTimeString('pl-PL')})`);
+      soundService.playSuccessSound();
+    } catch {
+      setAutoSaveStatus('Błąd zapisu kopii zapasowej');
+    }
   };
 
   const handleRestoreBackup = (backup: BackupEntry) => {
@@ -453,7 +478,8 @@ export default function App() {
         setSelectedWeekId(backup.data.weeks[0].id);
         setSelectedDayId(backup.data.weeks[0].days[0]?.id || '');
       }
-      alert(`Pomyślnie przywrócono dane z kopii z dnia ${backup.timestamp}`);
+      setAutoSaveStatus(`Przywrócono kopię z ${backup.timestamp}`);
+      soundService.playSuccessSound();
     }
   };
 
@@ -1054,6 +1080,33 @@ export default function App() {
     }));
   };
 
+  // Calendar Day Notes (Notatki, cele, przypomnienia i badania do daty)
+  const handleAddCalendarNote = (note: Omit<CalendarDayNote, 'id' | 'createdAt'>) => {
+    const newNote: CalendarDayNote = {
+      ...note,
+      id: `calnote-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    setData((prev) => ({
+      ...prev,
+      calendarNotes: [...(prev.calendarNotes || []), newNote]
+    }));
+  };
+
+  const handleUpdateCalendarNote = (id: string, updatedFields: Partial<CalendarDayNote>) => {
+    setData((prev) => ({
+      ...prev,
+      calendarNotes: (prev.calendarNotes || []).map((n) => (n.id === id ? { ...n, ...updatedFields } : n))
+    }));
+  };
+
+  const handleDeleteCalendarNote = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      calendarNotes: (prev.calendarNotes || []).filter((n) => n.id !== id)
+    }));
+  };
+
   const handleUpdateWeekStartDate = (weekId: string, startDate: string) => {
     setData((prev) => ({
       ...prev,
@@ -1208,6 +1261,20 @@ export default function App() {
     });
   };
 
+  const handleUpdateAiChatHistory = (history: AiChatMessage[]) => {
+    setData((prev) => ({
+      ...prev,
+      aiChatHistory: history
+    }));
+  };
+
+  const handleUpdateAiAgentMemories = (memories: AiAgentMemory[]) => {
+    setData((prev) => ({
+      ...prev,
+      aiAgentMemories: memories
+    }));
+  };
+
   const handleExportJson = () => {
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -1281,10 +1348,14 @@ export default function App() {
 
   const fontSizeScale = data.settings.fontSizeScale || 100;
 
+  const isAmoled = data.settings.amoledBlack === true;
+
   return (
     <div 
       data-ui-scale={uiScale}
-      className={`min-h-screen ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} ${data.settings.reducedMotion ? 'reduce-motion' : ''} ${fontFamilyClass} ${fontContrastClass} ${windowsViewportClass} flex flex-col font-sans antialiased crisp-pixel selection:bg-emerald-500 selection:text-white`}
+      className={`h-screen h-[100dvh] w-full max-w-full overflow-hidden ${
+        isAmoled ? 'bg-black text-slate-100' : isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+      } ${data.settings.reducedMotion ? 'reduce-motion' : ''} ${fontFamilyClass} ${fontContrastClass} ${windowsViewportClass} flex flex-col font-sans antialiased crisp-pixel selection:bg-emerald-500 selection:text-white`}
       style={{
         fontSize: fontSizeScale !== 100 ? `${fontSizeScale}%` : undefined
       }}
@@ -1327,13 +1398,27 @@ export default function App() {
             }}
             onExportJson={handleExportJson}
             onCreateBackup={handleCreateManualBackup}
-            onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onToggleMobileMenu={() => setIsMoreSheetOpen(true)}
             currentWeekName={currentWeek?.name}
             currentDayName={currentDay?.name}
           />
 
         {/* View Switcher Container */}
-        <main className={`flex-1 overflow-y-auto flex flex-col pb-[max(5.5rem,calc(4.5rem+env(safe-area-inset-bottom)))] md:pb-0 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+        <main className={`flex-1 overflow-y-auto flex flex-col pb-[max(5.5rem,calc(4.5rem+env(safe-area-inset-bottom)))] md:pb-0 ${
+          isAmoled ? 'bg-black' : isDark ? 'bg-slate-950' : 'bg-slate-50'
+        }`}>
+          {activeView === 'quick_access' && (
+            <QuickAccessDashboard
+              data={data}
+              onUpdateSettings={handleUpdateSettings}
+              onSelectView={handleSelectView}
+              onUpdateExerciseWeight={handleUpdateExerciseWeight}
+              onSaveExercisePerformance={handleSaveExercisePerformance}
+              onAddBodyWeight={handleAddBodyWeight}
+              unit={data.settings.unit}
+            />
+          )}
+
           {activeView === 'plan' && (
             <WorkoutPlanView
               weeks={data.weeks}
@@ -1368,6 +1453,7 @@ export default function App() {
               }}
               onDeleteExercise={handleDeleteExercise}
               unit={data.settings.unit}
+              settings={data.settings}
             />
           )}
 
@@ -1448,12 +1534,16 @@ export default function App() {
           {activeView === 'cycles' && (
             <CycleProtocolView
               protocolEntries={data.protocolEntries || []}
+              calendarNotes={data.calendarNotes || []}
               weeks={data.weeks}
               settings={data.settings}
               bodyWeights={data.bodyWeights || []}
               bodyPartMeasurements={data.bodyPartMeasurements || []}
               onAddProtocolEntry={handleAddProtocolEntry}
               onDeleteProtocolEntry={handleDeleteProtocolEntry}
+              onAddCalendarNote={handleAddCalendarNote}
+              onUpdateCalendarNote={handleUpdateCalendarNote}
+              onDeleteCalendarNote={handleDeleteCalendarNote}
               onUpdateWeekStartDate={handleUpdateWeekStartDate}
               onAddWeekFromGap={handleAddWeekFromGap}
             />
@@ -1482,6 +1572,21 @@ export default function App() {
               onCreateProfile={handleCreateProfile}
               onDeleteProfile={handleDeleteProfile}
               unit={data.settings.unit}
+            />
+          )}
+
+          {activeView === 'ai' && (
+            <AiCoachView
+              gymData={data}
+              settings={data.settings}
+              profile={data.profile}
+              calendarNotes={data.calendarNotes || []}
+              bodyWeights={data.bodyWeights || []}
+              bloodTests={data.bloodTests || []}
+              chatHistory={data.aiChatHistory || []}
+              onUpdateChatHistory={handleUpdateAiChatHistory}
+              agentMemories={data.aiAgentMemories || []}
+              onUpdateAgentMemories={handleUpdateAiAgentMemories}
             />
           )}
 
@@ -1591,12 +1696,55 @@ export default function App() {
         />
       )}
 
+      {/* Android Floating Action Button (FAB) if enabled */}
+      {data.settings.floatingActionButton && data.settings.floatingActionButton !== 'none' && (
+        <div className="fixed bottom-20 right-4 z-30 md:hidden animate-bounce-short">
+          {data.settings.floatingActionButton === 'timer' && (
+            <button
+              type="button"
+              onClick={() => {
+                const restSec = data.settings.restTimeCompound || 180;
+                workoutTimer.startRestTimer(restSec);
+                soundService.playTone([880], 70, 'sine');
+              }}
+              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl flex items-center justify-center border border-emerald-400/40 active:scale-95 cursor-pointer"
+              title="Szybki Stoper"
+            >
+              <span className="text-xl">⏱️</span>
+            </button>
+          )}
+          {data.settings.floatingActionButton === 'ai' && (
+            <button
+              type="button"
+              onClick={() => handleSelectView('ai')}
+              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-xl flex items-center justify-center border border-purple-400/40 active:scale-95 cursor-pointer"
+              title="Trener AI"
+            >
+              <span className="text-xl">🤖</span>
+            </button>
+          )}
+          {data.settings.floatingActionButton === 'weight' && (
+            <button
+              type="button"
+              onClick={() => handleSelectView('weight')}
+              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-xl flex items-center justify-center border border-cyan-400/40 active:scale-95 cursor-pointer"
+              title="Waga i Pomiary"
+            >
+              <span className="text-xl">⚖️</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Android Mobile Touch Bottom Navigation (Material 3) */}
       <AndroidBottomNav
         activeView={activeView}
         onSelectView={handleSelectView}
         onOpenMoreSheet={() => setIsMoreSheetOpen(true)}
         isDark={isDark}
+        profile={data.profile}
+        syncConfig={data.syncConfig}
+        settings={data.settings}
       />
 
       {/* Material 3 More Bottom Sheet */}
@@ -1608,6 +1756,9 @@ export default function App() {
         settings={data.settings}
         onUpdateSettings={handleUpdateSettings}
         profile={data.profile}
+        data={data}
+        onStartRestTimer={workoutTimer.startRestTimer}
+        onCreateBackup={handleCreateManualBackup}
       />
     </div>
   );

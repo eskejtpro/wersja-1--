@@ -21,6 +21,33 @@
   - Automatyczna detekcja strukturalnych tabel SQL i bezpieczna migracja ze starego formatu JSON ze snapshotem bezpieczeństwa (`planpasika_pre_room_sql_backup`).
   - Asynchroniczna, nieblokująca kolejka zapisu atomowego do tabel Room (Write-Behind / Non-blocking Queue) gwarantująca 60 FPS interfejsu przy edycji serii i notatek.
   - Zabezpieczenie natychmiastowego zrzutu transakcyjnego przy minimalizacji lub zamknięciu aplikacji na Androidzie (`flushDataToDisk`).
+- **Optymalizacja widoku mobilnego dla podglądu urządzenia AI Studio (`h-[100dvh]` & Edge-to-Edge)**:
+  - Usunięcie podwójnych zagnieżdżonych kontenerów `overflow-y-auto` we wszystkich widokach (`BodyWeightView`, `WorkoutPlanView`, `StatsView`, `SettingsView`, `UserProfileView`).
+  - `html, body, #root` oraz główny kontener `App` przyjmują `h-full w-full h-[100dvh] overflow-hidden`, eliminując czarne obramowania i przycinanie ekranu.
+  - Dolny pasek nawigacyjny `AndroidBottomNav` jest solidnie dokowany na dole ekranu (`fixed bottom-0 left-0 right-0 z-40 md:hidden`), a treść przewija się płynnie z bezpiecznym odstępem `pb-28`.
+  - Aktualizacja domyślnego badge'a wersji z `v2.24.0` do `v3.0.0` w `ModernHeader` i `appUpdateService`.
+- **Pełny 8-elementowy odpowiednik panelu Windows na dolnym pasku Androida (`AndroidBottomNav.tsx`)**:
+  - Przeniesienie 1-do-1 wszystkich modułów bocznego paska Windows do dolnego paska nawigacji mobilnej:
+    1. 📅 **Plan** (`plan` - Trening, dni i serie)
+    2. 📈 **Progres** (`stats` - Analityka siły i 1RM)
+    3. 📉 **Partie** (`muscle` - Rozkład partii mięśniowych)
+    4. ⚖️ **Pomiary** (`weight` - Waga ciała i obwody)
+    5. 💉 **Cykle** (`cycles` - Kalendarz iniekcji)
+    6. 🏋️ **Baza** (`exercises` - Słownik ćwiczeń)
+    7. ⚙️ **Opcje** (`settings` - Ustawienia i backup)
+    8. 👤 **Profil** (`profile` - Awatar "PA" z zieloną diodą synchronizacji live)
+  - Bezpośredni dostęp 1-tap do każdego modułu bez konieczności otwierania ukrytych szuflad.
+- **Przeniesienie przycisku menu nawigacji mobilnej (`btn-mobile-menu`) na lewą stronę nagłówka (`ModernHeader.tsx`)**:
+  - Przycisk wysuwania bocznego menu/nawigacji został przeniesiony z prawej krawędzi na lewą stronę nagłówka (przed tytułem widoku), zapewniając zgodność ze standardem Material 3 (Navigation Drawer Top-Left App Bar) we wszystkich oknach i kartach aplikacji.
+- **Udoskonalenie Kalendarza: Notatki Dnia i Rozszerzona Paleta Kolorów (`CycleProtocolView.tsx`)**:
+  - **Paleta 8 żywych akcentów kolorystycznych**: Szmaragdowy, Cyjan, Purpura, Bursztyn, Karmazyn, Słoneczny Żółty, Królewski Błękit, Grafitowy.
+  - **Przypisywanie notatek i celów bezpośrednio do dat**:
+    - Nowa encja `CalendarDayNote` utrwalana w bazie Room i synchronizowana w `GymData`.
+    - Tytuł, treść, kategorie tematyczne (📝 Ogólna, 🩸 Badania krwi, 💊 Suplementacja, ⚡ Regeneracja, 🎯 Cel dnia, 🏋️ Trening, ⚠️ Uwaga).
+    - Flaga priorytetu ⭐ (*Ważne*) oraz wybór koloru akcentu dla każdej notatki.
+  - **Szybki przełącznik w panelu bocznym**: *„Zapisz Dawkę”* vs *„Notatka do Daty”*.
+  - **Wizualizacja w siatce kalendarza**: kafelki notatek z ikonami kategorii, dawek z wybranymi kolorami, wagi i treningów z planu.
+  - **Nowy rejestr w dolnej tabeli**: *„Rejestr Notatek Kalendarza”* z filtrowaniem po kategoriach i wyszukiwarką.
 - **Weryfikacja testami**:
   - `tests/database-migration.test.cjs`: testy automatycznej migracji, transakcyjności i draftów sesji.
   - `tests/room-database.test.cjs`: testy strukturalnych tabel Room i DAO.

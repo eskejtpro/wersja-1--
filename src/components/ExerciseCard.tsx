@@ -20,7 +20,7 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
-import { Exercise, LoggedSet } from '../types';
+import { Exercise, LoggedSet, AppSettings } from '../types';
 import { calculate1RM, calculateVolume } from '../utils/calculations';
 
 interface ExerciseCardProps {
@@ -29,6 +29,7 @@ interface ExerciseCardProps {
   weekId: string;
   dayId: string;
   unit: 'kg' | 'lbs';
+  settings?: AppSettings;
   previousPerformance?: {
     weight: number;
     reps: number;
@@ -67,6 +68,7 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
   weekId,
   dayId,
   unit,
+  settings,
   previousPerformance,
   onSavePerformance,
   onRenameExercise,
@@ -79,6 +81,15 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
   const [weight, setWeight] = useState<number>(exercise.weight ?? 60);
   const [isTrackerOpen, setIsTrackerOpen] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+
+  const isAmoled = settings?.amoledBlack === true;
+  const isHighContrast = settings?.highContrastBorders === true;
+  const isGymDigits = settings?.gymDigits !== false;
+  const isLeftHanded = settings?.handedness === 'left';
+  const cardRadiusClass = settings?.cardBorderRadius === 'sharp' ? 'rounded-xs' : settings?.cardBorderRadius === 'pill' ? 'rounded-3xl' : 'rounded-2xl';
+  const cardDensity = settings?.cardDensity || 'compact';
+  const isCompact = cardDensity === 'compact' || cardDensity === 'ultra_dense';
+  const isUltraDense = cardDensity === 'ultra_dense';
 
   // Overload Progression Indicator calculations
   const weightDiff = previousPerformance ? Math.round((weight - previousPerformance.weight) * 10) / 10 : null;
@@ -201,22 +212,24 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
 
   return (
     <div 
-      className={`rounded-2xl border transition-all duration-200 p-4 sm:p-5 shadow-xs space-y-4 ${
+      className={`${cardRadiusClass} border transition-all duration-200 ${
+        isUltraDense ? 'p-2.5 sm:p-3 space-y-2' : isCompact ? 'p-3 sm:p-4 space-y-2.5' : 'p-4 sm:p-5 space-y-4'
+      } shadow-xs ${
         isFullyCompleted 
           ? 'bg-slate-900/95 border-emerald-500/40 shadow-emerald-950/10' 
-          : 'bg-slate-900/90 border-slate-800/90 hover:border-slate-700'
-      }`}
+          : isAmoled ? 'bg-black border-zinc-800' : 'bg-slate-900/90 border-slate-800/90 hover:border-slate-700'
+      } ${isHighContrast ? 'border-emerald-500/60 ring-1 ring-emerald-500/30' : ''}`}
       id={`exercise-card-${exercise.id}`}
     >
       {/* 1. Header: Number, Name, Badges & Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono text-xs font-black shrink-0 border ${
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className={`${isCompact ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'} rounded-lg flex items-center justify-center font-mono font-black shrink-0 border ${
             isFullyCompleted
               ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
               : 'bg-slate-800 text-slate-300 border-slate-700/60'
           }`}>
-            {isFullyCompleted ? <Check className="w-4 h-4 text-emerald-400" /> : index + 1}
+            {isFullyCompleted ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : index + 1}
           </div>
 
           <div>
@@ -407,7 +420,13 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
       </div>
 
       {/* 2. Interactive Parameters Strip (Weight, Sets, Reps) */}
-      <div className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div className={`${
+        isAmoled ? 'bg-zinc-950 border-zinc-800' : 'bg-slate-950/80 border-slate-800/80'
+      } border ${cardRadiusClass} ${
+        isUltraDense ? 'p-2 gap-2' : isCompact ? 'p-2.5 sm:p-3 gap-3' : 'p-3.5 gap-4'
+      } flex flex-wrap items-center justify-between ${
+        isLeftHanded ? 'flex-row-reverse' : 'flex-row'
+      }`}>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           {/* CIĘŻAR ROBOCZY */}
           <div className="space-y-1">
@@ -597,10 +616,10 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
       </div>
 
       {/* 3. Interactive Set Bubbles Tracker (Quick Click to Check-off Sets) */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-2 overflow-x-auto py-1">
-          <span className="text-[11px] font-mono font-bold text-slate-400 shrink-0">
-            Szybkie Serie:
+      <div className={`flex items-center justify-between gap-2 pt-0.5 ${isLeftHanded ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar">
+          <span className="text-[10px] font-mono font-bold text-slate-400 shrink-0">
+            Serie:
           </span>
 
           {detailedSets.map((s, idx) => (
@@ -608,27 +627,33 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
               key={idx}
               type="button"
               onClick={() => toggleSetComplete(idx)}
-              className={`min-h-[44px] min-w-[48px] px-3.5 py-2 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 border active:scale-90 cursor-pointer ${
+              className={`${
+                isUltraDense
+                  ? 'min-h-[34px] min-w-[36px] px-2 py-1 text-[11px]'
+                  : isCompact
+                  ? 'min-h-[38px] min-w-[42px] px-2.5 py-1.5 text-xs'
+                  : 'min-h-[44px] min-w-[48px] px-3.5 py-2 text-xs'
+              } rounded-xl font-mono font-bold transition-all flex items-center justify-center gap-1 border active:scale-90 cursor-pointer ${
                 s.completed
                   ? 'bg-emerald-500/25 text-emerald-300 border-emerald-500/70 shadow-sm shadow-emerald-950/40 ring-1 ring-emerald-500/30'
-                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                  : isAmoled ? 'bg-zinc-950 text-slate-400 border-zinc-800 hover:border-zinc-700' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
               }`}
               title={`Kliknij, aby oznaczyć serię ${idx + 1} jako ${s.completed ? 'niewykonaną' : 'ukończoną'}`}
             >
               {s.completed ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
               ) : (
-                <Circle className="w-3.5 h-3.5 text-slate-600" />
+                <Circle className="w-3 h-3 text-slate-600" />
               )}
               <span>S{idx + 1}</span>
             </button>
           ))}
         </div>
 
-        <span className="text-[11px] font-mono text-slate-500 hidden sm:inline">
+        <span className="text-[10px] font-mono text-slate-500 hidden sm:inline">
           {completedSetsCount === detailedSets.length && detailedSets.length > 0
-            ? '🔥 Wszystkie serie zaliczone!'
-            : `${detailedSets.length - completedSetsCount} serii do końca`}
+            ? '🔥 Zaliczone!'
+            : `${detailedSets.length - completedSetsCount} do końca`}
         </span>
       </div>
 

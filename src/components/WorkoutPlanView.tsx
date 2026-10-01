@@ -16,7 +16,7 @@ import {
   AlertCircle,
   Pencil
 } from 'lucide-react';
-import { TrainingWeek, TrainingDay, Exercise, LoggedSet } from '../types';
+import { TrainingWeek, TrainingDay, Exercise, LoggedSet, AppSettings } from '../types';
 import { calculateVolume } from '../utils/calculations';
 import { ExerciseCard } from './ExerciseCard';
 
@@ -52,6 +52,7 @@ interface WorkoutPlanViewProps {
   onOpenHistoryModal: (exercise: Exercise) => void;
   onDeleteExercise: (weekId: string, dayId: string, exerciseId: string) => void;
   unit: 'kg' | 'lbs';
+  settings?: AppSettings;
 }
 
 export const WorkoutPlanView: React.FC<WorkoutPlanViewProps> = ({
@@ -77,7 +78,8 @@ export const WorkoutPlanView: React.FC<WorkoutPlanViewProps> = ({
   onOpenEditExerciseModal,
   onOpenHistoryModal,
   onDeleteExercise,
-  unit
+  unit,
+  settings
 }) => {
   const currentWeek = weeks.find((w) => w.id === selectedWeekId) || weeks[0];
   const currentDay = currentWeek?.days.find((d) => d.id === selectedDayId) || currentWeek?.days[0];
@@ -173,10 +175,18 @@ export const WorkoutPlanView: React.FC<WorkoutPlanViewProps> = ({
     return null;
   };
 
+  const isAmoled = settings?.amoledBlack === true;
+  const cardDensity = settings?.cardDensity || 'compact';
+  const isCompact = cardDensity === 'compact' || cardDensity === 'ultra_dense';
+  const isUltraDense = cardDensity === 'ultra_dense';
+  const cardRadiusClass = settings?.cardBorderRadius === 'sharp' ? 'rounded-xs' : settings?.cardBorderRadius === 'pill' ? 'rounded-3xl' : 'rounded-2xl';
+
   return (
-    <div className="flex flex-col h-full overflow-y-auto" id="view-workout-plan">
+    <div className={`flex flex-col w-full flex-1 ${isAmoled ? 'bg-black' : ''}`} id="view-workout-plan">
       {/* 1. Week & Timeline Navigation Bar */}
-      <section className="p-4 sm:px-6 sm:py-3.5 border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-sm space-y-3">
+      <section className={`${
+        isUltraDense ? 'p-2 sm:px-4 sm:py-2 space-y-2' : isCompact ? 'p-3 sm:px-5 sm:py-2.5 space-y-2.5' : 'p-4 sm:px-6 sm:py-3.5 space-y-3'
+      } border-b ${isAmoled ? 'border-zinc-800 bg-black' : 'border-slate-800/80 bg-slate-950/70'} backdrop-blur-sm`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Week Selector Chips */}
           <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar max-w-full">
@@ -363,13 +373,17 @@ export const WorkoutPlanView: React.FC<WorkoutPlanViewProps> = ({
       </section>
 
       {/* 3. Main Workspace Area */}
-      <main className="p-4 sm:p-6 space-y-4 max-w-6xl w-full mx-auto">
+      <main className={`${
+        isUltraDense ? 'p-2 sm:p-3 space-y-2.5' : isCompact ? 'p-3 sm:p-4 space-y-3' : 'p-4 sm:p-6 space-y-4'
+      } max-w-6xl w-full mx-auto`}>
         {/* Smart Today Quick Action Banner (gdy oglądamy inny dzień niż dzisiejszy planowany) */}
         {!isViewingSuggestedDay && suggestedDay && (
-          <div className="bg-slate-900/95 border border-emerald-500/40 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-md shadow-emerald-950/20">
+          <div className={`${isAmoled ? 'bg-zinc-950 border-emerald-500/40' : 'bg-slate-900/95 border-emerald-500/40'} ${cardRadiusClass} ${
+            isCompact ? 'p-2.5 sm:p-3' : 'p-3.5'
+          } border flex items-center justify-between gap-3 shadow-md shadow-emerald-950/20`}>
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                <Calendar className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <Calendar className="w-4 h-4" />
               </div>
               <div className="text-xs min-w-0">
                 <p className="font-bold text-slate-200">
@@ -384,7 +398,7 @@ export const WorkoutPlanView: React.FC<WorkoutPlanViewProps> = ({
             <button
               type="button"
               onClick={() => onSelectDay(suggestedDay.id)}
-              className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shrink-0 cursor-pointer shadow-xs active:scale-95 transition-all"
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shrink-0 cursor-pointer shadow-xs active:scale-95 transition-all"
             >
               Rozpocznij Dzisiaj
             </button>
@@ -394,9 +408,15 @@ export const WorkoutPlanView: React.FC<WorkoutPlanViewProps> = ({
         {/* Active Workout Hero Card */}
         {currentDay && (
           <div
-            className={`rounded-2xl p-5 sm:p-6 border transition-all relative overflow-hidden ${
+            className={`${cardRadiusClass} ${
+              isUltraDense ? 'p-3 sm:p-4' : isCompact ? 'p-3.5 sm:p-5' : 'p-5 sm:p-6'
+            } border transition-all relative overflow-hidden ${
               currentDay.completed
-                ? 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border-emerald-800/60 text-slate-100 shadow-md shadow-emerald-950/20'
+                ? isAmoled
+                  ? 'bg-zinc-950 border-emerald-800/60 text-slate-100 shadow-md'
+                  : 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border-emerald-800/60 text-slate-100 shadow-md shadow-emerald-950/20'
+                : isAmoled
+                ? 'bg-zinc-950 border-zinc-800 text-slate-100 shadow-xs'
                 : 'bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border-slate-800 text-slate-100 shadow-xs'
             }`}
           >
@@ -589,6 +609,7 @@ export const WorkoutPlanView: React.FC<WorkoutPlanViewProps> = ({
                   onOpenEditModal={onOpenEditExerciseModal}
                   onOpenHistoryModal={onOpenHistoryModal}
                   onDelete={onDeleteExercise}
+                  settings={settings}
                 />
               ))}
             </div>
